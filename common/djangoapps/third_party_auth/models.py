@@ -430,6 +430,12 @@ class SAMLProviderConfig(ProviderConfig):
             'in the "Identity Provider Type" field, may make use of the information stored '
             'in this field for additional configuration.'
         ))
+    saml_configuration = models.ForeignKey(
+        'SAMLConfiguration',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
     def clean(self):
         """ Standardize and validate fields """
@@ -493,6 +499,12 @@ class SAMLProviderConfig(ProviderConfig):
             raise AuthNotConfigured(provider_name=self.name)
         conf['x509cert'] = data.public_key
         conf['url'] = data.sso_url
+
+        # Add SAMLConfiguration appropriate for this IdP
+        conf['saml_sp_configuration'] = (
+            self.saml_configuration or
+            SAMLConfiguration.current(self.site.id, 'default')
+        )
         idp_class = get_saml_idp_class(self.identity_provider_type)
         return idp_class(self.idp_slug, **conf)
 
@@ -503,13 +515,21 @@ class SAMLConfiguration(ConfigurationModel):
     Service Provider and allow users to authenticate via third party SAML
     Identity Providers (IdPs)
     """
-    KEY_FIELDS = ('site_id', )
+    KEY_FIELDS = ('site_id', 'slug')
     site = models.ForeignKey(
         Site,
         default=settings.SITE_ID,
         related_name='%(class)ss',
         help_text=_(
             'The Site that this SAML configuration belongs to.'
+        ),
+    )
+    slug = models.SlugField(
+        max_length=30,
+        default='default',
+        help_text=(
+            'A short string uniquely identifying this configuration. '
+            'Cannot contain spaces. Examples: "ubc", "mit-staging"'
         ),
     )
     private_key = models.TextField(
@@ -551,6 +571,17 @@ class SAMLConfiguration(ConfigurationModel):
         verbose_name = "SAML Configuration"
         verbose_name_plural = verbose_name
 
+    def __str__(self):
+        """
+        Return human-readable string representation.
+        """
+        # pylint: disable=no-member
+        return "<SAMLConfiguration {site}: {slug} on {date:%Y-%m-%d %H:%M:%S}>".format(
+            site=self.site.name,
+            slug=self.slug,
+            date=self.change_date,
+        )
+
     def clean(self):
         """ Standardize and validate fields """
         super(SAMLConfiguration, self).clean()
@@ -590,12 +621,20 @@ class SAMLConfiguration(ConfigurationModel):
             if self.public_key:
                 return self.public_key
             # To allow instances to avoid storing keys in the DB, the key pair can also be set via Django:
-            return getattr(settings, 'SOCIAL_AUTH_SAML_SP_PUBLIC_CERT', '')
+            if self.slug == 'default':
+                return getattr(settings, 'SOCIAL_AUTH_SAML_SP_PUBLIC_CERT', '')
+            else:
+                public_certs = getattr(settings, 'SOCIAL_AUTH_SAML_SP_PUBLIC_CERT_DICT', {})
+                return public_certs.get(self.slug, '')
         if name == "SP_PRIVATE_KEY":
             if self.private_key:
                 return self.private_key
             # To allow instances to avoid storing keys in the DB, the private key can also be set via Django:
-            return getattr(settings, 'SOCIAL_AUTH_SAML_SP_PRIVATE_KEY', '')
+            if self.slug == 'default':
+                return getattr(settings, 'SOCIAL_AUTH_SAML_SP_PRIVATE_KEY', '')
+            else:
+                private_keys = getattr(settings, 'SOCIAL_AUTH_SAML_SP_PRIVATE_KEY_DICT', {})
+                return private_keys.get(self.slug, '')
         other_config = {
             # These defaults can be overriden by self.other_config_str
             "GET_ALL_EXTRA_DATA": True,  # Save all attribute values the IdP sends into the UserSocialAuth table
