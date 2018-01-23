@@ -56,8 +56,8 @@ import third_party_auth
 from third_party_auth.saml import SAP_SUCCESSFACTORS_SAML_KEY
 import track.views
 from bulk_email.models import BulkEmailFlag, Optout  # pylint: disable=import-error
-from certificates.api import get_certificate_url, has_html_certificates_enabled  # pylint: disable=import-error
-from certificates.models import (  # pylint: disable=import-error
+from lms.djangoapps.certificates.api import get_certificate_url, has_html_certificates_enabled  # pylint: disable=import-error
+from lms.djangoapps.certificates.models import (  # pylint: disable=import-error
     CertificateStatuses,
     GeneratedCertificate,
     certificate_status_for_student
@@ -76,7 +76,7 @@ from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
 from notification_prefs.views import enable_notifications
 from openedx.core.djangoapps import monitoring_utils
 from openedx.core.djangoapps.catalog.utils import (
-    get_programs_with_type, get_visible_sessions_for_entitlement, get_pseudo_session_for_entitlement
+    get_programs, get_programs_with_type, get_visible_sessions_for_entitlement, get_pseudo_session_for_entitlement
 )
 from openedx.core.djangoapps.certificates.api import certificates_viewable_for_course
 from openedx.core.djangoapps.credit.email_utils import get_credit_provider_display_names, make_providers_strings
@@ -815,10 +815,10 @@ def dashboard(request):
     if bundles_on_dashboard_flag.is_enabled():
         programs_data = meter.programs
         if programs_data:
+            meter.programs = [get_programs(request.site, uuid=programs_data[0]['uuid'])]
             program_data = meter.programs[0]
             program_data = ProgramDataExtender(program_data, request.user).extend()
 
-            program_data.pop('courses')
             skus = program_data.get('skus')
 
             urls = {
