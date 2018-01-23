@@ -51,6 +51,14 @@
             expect(state.completionHandler.markCompletion).not.toHaveBeenCalled();
         });
 
+        it('does not call the completion api on the LMS when the video is loaded but not seen', function() {
+            spyOn(window, 'VerticalStudentView').and.callThrough();
+            spyOn(state.completionHandler, 'markCompletion').and.callThrough();
+            expect(window.verticalStudentView).toHaveBeenCalled();
+            expect(state.completionHandler.markCompletion).not.toHaveBeenCalled();
+        });
+
+
         it('calls the completion api on the LMS when the video ends', function() {
             spyOn(state.completionHandler, 'markCompletion').and.callThrough();
             state.el.trigger('ended');
