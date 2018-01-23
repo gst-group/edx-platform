@@ -1,7 +1,7 @@
 (function() {
     'use strict';
     describe('VideoPlayer completion', function() {
-        var state, oldOTBD;
+        var state, oldOTBD, verticalStudentView;
 
         beforeEach(function() {
             oldOTBD = window.onTouchBasedDevice;
@@ -12,10 +12,11 @@
             state = jasmine.initializePlayer({
                 recordedYoutubeIsAvailable: true,
                 completionEnabled: true,
-                publishCompletionUrl: 'https://example.com/publish_completion_url'
-
+                publishCompletionUrl: 'https://example.com/publish_completion_url',
             });
             state.completionHandler.completeAfterTime = 20;
+            verticalStudentView = new window.VerticalStudentView(null, '#video_example');
+
         });
 
         afterEach(function() {

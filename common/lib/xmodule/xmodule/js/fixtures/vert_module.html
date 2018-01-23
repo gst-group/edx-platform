@@ -1,0 +1,9 @@
+<div class="vert-mod">
+  <div class="vert vert-1" data-id="1" \
+    % if item['id'] in watched_completable_blocks:
+      data-completable-by-viewing=True \
+    % endif
+      >
+    ${HTML(item['content'])}
+  </div>
+</div>
